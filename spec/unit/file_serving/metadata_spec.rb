@@ -101,6 +101,7 @@ describe Puppet::FileServing::Metadata, :uses_checksums => true do
     describe "when collecting attributes" do
       describe "when managing files" do
         let(:path) { tmpfile('file_serving_metadata') }
+        let(:time) { Time.now }
 
         before :each do
           FileUtils.touch(path)
@@ -130,13 +131,27 @@ describe Puppet::FileServing::Metadata, :uses_checksums => true do
               metadata.checksum.should == "{#{digest_algorithm}}#{checksum}"
             end
 
-            it "should give a mtime checksum when checksum_type is set" do
-              time = Time.now
-              metadata.checksum_type = "mtime"
-              metadata.expects(:mtime_file).returns(@time)
+            it "should give a #{Puppet[:digest_algorithm]} when checksum_type is set" do
+              Puppet[:digest_algorithm] = nil
+              metadata.checksum_type = digest_algorithm
               metadata.collect
               metadata.checksum.should == "{mtime}#{@time}"
+              expect(metadata.checksum).to eq("{#{digest_algorithm}}#{checksum}")
             end
+          end
+
+          it "should give a mtime checksum when checksum_type is set" do
+            metadata.checksum_type = "mtime"
+            metadata.expects(:mtime_file).returns(time)
+            metadata.collect
+            expect(metadata.checksum).to eq("{mtime}#{time}")
+          end
+
+          it "should give a ctime checksum when checksum_type is set" do
+            metadata.checksum_type = "ctime"
+            metadata.expects(:ctime_file).returns(time)
+            metadata.collect
+            expect(metadata.checksum).to eq("{ctime}#{time}")
           end
         end
 
